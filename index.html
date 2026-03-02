@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Ledger</title>
+    <script type="importmap">
+    {
+      "imports": {
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+        "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "firebase/": "https://esm.sh/firebase@^12.8.0/"
+      }
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Courier+Prime:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              ledger: {
+                bg: 'var(--ledger-bg)',
+                bgDark: 'var(--ledger-bg-dark)',
+                text: 'var(--ledger-text)',
+                textDark: 'var(--ledger-text-dark)',
+                accent: 'var(--ledger-accent)',
+                accentHover: 'var(--ledger-accent-hover)',
+                muted: 'var(--ledger-muted)',
+                border: 'var(--ledger-border)',
+                borderDark: 'var(--ledger-border-dark)',
+                surface: 'var(--ledger-surface)',
+                surfaceDark: 'var(--ledger-surface-dark)'
+              }
+            },
+            fontFamily: {
+              sans: ['var(--font-main)', 'sans-serif'],
+              mono: ['Courier Prime', 'monospace'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.4s ease-out',
+              'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(100%)' },
+                '100%': { transform: 'translateY(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Hide scrollbar for clean UI */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* --- THEME VARIABLES --- */
+      
+      /* DEFAULT: DARK MODE (Modern Muted Green) */
+      :root {
+        --font-main: 'Inter';
+        
+        /* Base: Deep Matte Gray/Black */
+        --ledger-bg: #0C0C0E; 
+        --ledger-bg-dark: #0C0C0E;
+        
+        /* Text: Off-white for less eye strain */
+        --ledger-text: #EDEDED;
+        --ledger-text-dark: #EDEDED;
+        
+        /* Accent: Requested Muted Green */
+        --ledger-accent: #354A3D; 
+        --ledger-accent-hover: #456150; /* Slightly lighter for interaction */
+        
+        /* Muted: Cool gray */
+        --ledger-muted: #71717A;
+        
+        /* Border: Subtle separation */
+        --ledger-border: #27272A;
+        --ledger-border-dark: #27272A;
+        
+        /* Surface: Slightly lighter than BG */
+        --ledger-surface: #161618;
+        --ledger-surface-dark: #161618;
+      }
+
+      /* Light Mode - Executive/Clean */
+      .theme-light {
+        --ledger-bg: #FAFAFA; /* Zinc-50 */
+        --ledger-bg-dark: #FAFAFA;
+        --ledger-text: #18181B; /* Zinc-900 */
+        --ledger-text-dark: #18181B;
+        --ledger-accent: #354A3D; /* Keep brand consistency */
+        --ledger-accent-hover: #26352B;
+        --ledger-muted: #A1A1AA;
+        --ledger-border: #E4E4E7; /* Zinc-200 */
+        --ledger-border-dark: #E4E4E7;
+        --ledger-surface: #FFFFFF;
+        --ledger-surface-dark: #FFFFFF;
+      }
+
+      /* Vintage - Retro Office / 90s Beige */
+      .theme-vintage {
+        --font-main: 'Courier Prime';
+        --ledger-bg: #EBE5CE; /* Retro Beige */
+        --ledger-bg-dark: #EBE5CE;
+        --ledger-text: #2B2A29;
+        --ledger-text-dark: #2B2A29;
+        --ledger-accent: #4A6C6F; /* Petrol Blue */
+        --ledger-accent-hover: #365254;
+        --ledger-muted: #8C887D;
+        --ledger-border: #C9C4B0;
+        --ledger-border-dark: #C9C4B0;
+        --ledger-surface: #F5F1E1; /* Lighter Beige */
+        --ledger-surface-dark: #F5F1E1;
+      }
+
+      /* Sepia - Editorial / Old Paper */
+      .theme-sepia {
+        --ledger-bg: #F2EFE9; /* Newsprint */
+        --ledger-bg-dark: #F2EFE9;
+        --ledger-text: #3D342B; /* Dark Warm Grey */
+        --ledger-text-dark: #3D342B;
+        --ledger-accent: #9C5642; /* Clay/Brick */
+        --ledger-accent-hover: #7D4332;
+        --ledger-muted: #9E948B;
+        --ledger-border: #E3DDD3;
+        --ledger-border-dark: #E3DDD3;
+        --ledger-surface: #FFFFFF;
+        --ledger-surface-dark: #FFFFFF;
+      }
+
+      /* Cyberpunk - Void & Neon */
+      .theme-cyberpunk {
+        --font-main: 'JetBrains Mono';
+        --ledger-bg: #050508; /* Void Black */
+        --ledger-bg-dark: #050508;
+        --ledger-text: #E0E0E0;
+        --ledger-text-dark: #E0E0E0;
+        --ledger-accent: #00F0FF; /* Neon Cyan */
+        --ledger-accent-hover: #00C2CC;
+        --ledger-muted: #4F5B75;
+        --ledger-border: #1A1A2E;
+        --ledger-border-dark: #1A1A2E;
+        --ledger-surface: #0A0A12;
+        --ledger-surface-dark: #0A0A12;
+      }
+
+      /* Nordic - Frost / Engineered */
+      .theme-nordic {
+        --ledger-bg: #242933; /* Darker than standard Nord0 */
+        --ledger-bg-dark: #242933;
+        --ledger-text: #D8DEE9; /* Nord4 */
+        --ledger-text-dark: #D8DEE9;
+        --ledger-accent: #88C0D0; /* Nord8 Frost */
+        --ledger-accent-hover: #81A1C1;
+        --ledger-muted: #4C566A; /* Nord3 */
+        --ledger-border: #3B4252; /* Nord1 */
+        --ledger-border-dark: #3B4252;
+        --ledger-surface: #2E3440; /* Nord0 */
+        --ledger-surface-dark: #2E3440;
+      }
+
+      /* High Contrast - Accessibility First */
+      .theme-high-contrast {
+        --ledger-bg: #000000;
+        --ledger-bg-dark: #000000;
+        --ledger-text: #FFFFFF;
+        --ledger-text-dark: #FFFFFF;
+        --ledger-accent: #00FF00; /* Pure Terminal Green */
+        --ledger-accent-hover: #00CC00;
+        --ledger-muted: #A3A3A3;
+        --ledger-border: #FFFFFF;
+        --ledger-border-dark: #FFFFFF;
+        --ledger-surface: #000000;
+        --ledger-surface-dark: #000000;
+      }
+
+      /* Zen - Stone / Monochromatic */
+      .theme-zen {
+        --ledger-bg: #1C1C1E; /* iOS System Gray 6 */
+        --ledger-bg-dark: #1C1C1E;
+        --ledger-text: #E5E5E7;
+        --ledger-text-dark: #E5E5E7;
+        --ledger-accent: #636366; /* System Gray */
+        --ledger-accent-hover: #8E8E93;
+        --ledger-muted: #48484A;
+        --ledger-border: #2C2C2E;
+        --ledger-border-dark: #2C2C2E;
+        --ledger-surface: #2C2C2E; /* iOS System Gray 5 */
+        --ledger-surface-dark: #2C2C2E;
+      }
+
+      /* OLED - True Black */
+      .theme-oled {
+        --ledger-bg: #000000;
+        --ledger-bg-dark: #000000;
+        --ledger-text: #F2F2F2;
+        --ledger-text-dark: #F2F2F2;
+        --ledger-accent: #FFFFFF; /* Stark White */
+        --ledger-accent-hover: #CCCCCC;
+        --ledger-muted: #333333;
+        --ledger-border: #1A1A1A;
+        --ledger-border-dark: #1A1A1A;
+        --ledger-surface: #000000;
+        --ledger-surface-dark: #000000;
+      }
+
+      /* Blue Light - Warm / Sunset */
+      .theme-blue-light {
+        --ledger-bg: #191512; /* Very Warm Dark */
+        --ledger-bg-dark: #191512;
+        --ledger-text: #FAD9C5; /* Warm Tint */
+        --ledger-text-dark: #FAD9C5;
+        --ledger-accent: #E85D04; /* Deep Orange */
+        --ledger-accent-hover: #DC2F02;
+        --ledger-muted: #7A5C4E;
+        --ledger-border: #422C24;
+        --ledger-border-dark: #422C24;
+        --ledger-surface: #261E1A;
+        --ledger-surface-dark: #261E1A;
+      }
+
+      body {
+        background-color: var(--ledger-bg);
+        color: var(--ledger-text);
+        transition: background-color 0.4s ease, color 0.4s ease;
+      }
+
+      /* Helper to apply variables to Tailwind Utility Classes in all modes */
+      .theme-light .dark\:bg-ledger-bgDark,
+      .theme-vintage .dark\:bg-ledger-bgDark,
+      .theme-sepia .dark\:bg-ledger-bgDark,
+      .theme-cyberpunk .dark\:bg-ledger-bgDark,
+      .theme-nordic .dark\:bg-ledger-bgDark,
+      .theme-high-contrast .dark\:bg-ledger-bgDark,
+      .theme-zen .dark\:bg-ledger-bgDark,
+      .theme-oled .dark\:bg-ledger-bgDark,
+      .theme-blue-light .dark\:bg-ledger-bgDark
+       {
+        background-color: var(--ledger-bg-dark);
+      }
+      
+      .theme-light .dark\:text-ledger-textDark,
+      .theme-vintage .dark\:text-ledger-textDark,
+      /* ...add all others... */
+      .theme-sepia .dark\:text-ledger-textDark,
+      .theme-cyberpunk .dark\:text-ledger-textDark,
+      .theme-nordic .dark\:text-ledger-textDark,
+      .theme-high-contrast .dark\:text-ledger-textDark,
+      .theme-zen .dark\:text-ledger-textDark,
+      .theme-oled .dark\:text-ledger-textDark,
+      .theme-blue-light .dark\:text-ledger-textDark
+       {
+        color: var(--ledger-text-dark);
+      }
+
+      .theme-light .dark\:border-ledger-borderDark,
+      .theme-vintage .dark\:border-ledger-borderDark,
+      /* ...add all others... */
+      .theme-sepia .dark\:border-ledger-borderDark,
+      .theme-cyberpunk .dark\:border-ledger-borderDark,
+      .theme-nordic .dark\:border-ledger-borderDark,
+      .theme-high-contrast .dark\:border-ledger-borderDark,
+      .theme-zen .dark\:border-ledger-borderDark,
+      .theme-oled .dark\:border-ledger-borderDark,
+      .theme-blue-light .dark\:border-ledger-borderDark
+       {
+        border-color: var(--ledger-border-dark);
+      }
+
+      .theme-light .dark\:bg-ledger-surfaceDark,
+      .theme-vintage .dark\:bg-ledger-surfaceDark,
+      /* ...add all others... */
+      .theme-sepia .dark\:bg-ledger-surfaceDark,
+      .theme-cyberpunk .dark\:bg-ledger-surfaceDark,
+      .theme-nordic .dark\:bg-ledger-surfaceDark,
+      .theme-high-contrast .dark\:bg-ledger-surfaceDark,
+      .theme-zen .dark\:bg-ledger-surfaceDark,
+      .theme-oled .dark\:bg-ledger-surfaceDark,
+      .theme-blue-light .dark\:bg-ledger-surfaceDark
+       {
+        background-color: var(--ledger-surface-dark);
+      }
+    </style>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
