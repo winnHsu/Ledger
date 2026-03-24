@@ -95,7 +95,7 @@ export const getWeekParams = (date: Date = new Date()) => {
         firstSun.setDate(firstSat.getDate() + 1);
         
         const diffTime = d.getTime() - firstSun.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
         weekNum = 2 + Math.floor(diffDays / 7);
     }
@@ -161,7 +161,7 @@ export const toggleHabitCompletion = async (
   // Calculate days in this specific week (handle partial weeks at year boundaries)
   const weekNum = parseInt(weekId.replace('week', ''));
   const { start, end } = getWeekRange(yearNum, weekNum);
-  const daysInWeek = Math.floor((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
+  const daysInWeek = Math.round((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
   
   // Path: users/{uid}/{year}/{weekId}
   const weekRef = doc(db, `users/${userId}/${year}/${weekId}`);
@@ -205,6 +205,9 @@ export const toggleHabitCompletion = async (
         transaction.update(weekRef, updates);
     }
   });
+
+  // Recalculate streak after toggling
+  return await updateAppStreak(userId, true, dateStr);
 };
 
 // 2. Create Habit
@@ -455,38 +458,89 @@ export const updateUserProfile = async (
     });
 };
 
-// 10. Update App Streak (Run on App Load)
-export const updateAppStreak = async (userId: string): Promise<{ streak: number, showedAnimation: boolean } | null> => {
+// 10. Update App Streak (Run on App Load or Toggle)
+export const updateAppStreak = async (userId: string, isFromToggle: boolean = false, toggledDateStr?: string): Promise<{ streak: number, showedAnimation: boolean } | null> => {
     const userRef = doc(db, 'users', userId);
     
     // 1. Get System Time Zone
     const systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    // 2. Dates for comparison (using current System Time Zone implicitly via Date constructor)
+    // 2. Dates for comparison
     const today = new Date();
     const todayStr = toLocalISOString(today);
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = toLocalISOString(yesterday);
-
     try {
+        // Calculate the streak by reading the week documents.
+        let streak = 0;
+        let currentDate = new Date(today);
+        currentDate.setHours(0,0,0,0);
+        
+        let currentYear = currentDate.getFullYear();
+        let yearDocs: Record<string, any> = {};
+        
+        const loadYear = async (year: number) => {
+            const snap = await getDocs(collection(db, `users/${userId}/${year}`));
+            const docs: Record<string, any> = {};
+            snap.forEach(d => {
+                docs[d.id] = d.data();
+            });
+            return docs;
+        };
+        
+        yearDocs = await loadYear(currentYear);
+        
+        const hasLogsOnDate = async (date: Date) => {
+            const year = date.getFullYear();
+            if (year !== currentYear) {
+                currentYear = year;
+                yearDocs = await loadYear(currentYear);
+            }
+            const { weekId, dayName } = getWeekParams(date);
+            const weekData = yearDocs[weekId];
+            if (!weekData) return false;
+            const dayHabits = weekData[dayName];
+            return Array.isArray(dayHabits) && dayHabits.length > 0;
+        };
+        
+        let mostRecentLoggedDate = new Date(currentDate);
+        let foundLog = false;
+        
+        // Scan backwards to find the most recent logged day (cap at 365 days to prevent infinite loops)
+        for (let i = 0; i < 365; i++) {
+            const hasLog = await hasLogsOnDate(mostRecentLoggedDate);
+            if (hasLog) {
+                foundLog = true;
+                break;
+            }
+            mostRecentLoggedDate.setDate(mostRecentLoggedDate.getDate() - 1);
+        }
+        
+        if (foundLog) {
+            streak = 1;
+            let checkDate = new Date(mostRecentLoggedDate);
+            while (true) {
+                checkDate.setDate(checkDate.getDate() - 1);
+                const logs = await hasLogsOnDate(checkDate);
+                if (logs) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            streak = 0;
+        }
+
         const result = await runTransaction(db, async (transaction) => {
             const userSnap = await transaction.get(userRef);
             if (!userSnap.exists()) return null;
 
             const data = userSnap.data();
-            const lastLogTime = data.lastLogTime instanceof Timestamp ? data.lastLogTime.toDate() : null;
             const currentStreak = typeof data.dayStreak === 'number' ? data.dayStreak : 0;
             const storedTimeZone = data.timeZone;
             
             // Check for TimeZone change
             const isTimeZoneDifferent = storedTimeZone !== systemTimeZone;
-
-            // Generate lastLogStr based on CURRENT system time zone. 
-            // This effectively "converts" the UTC timestamp to the local time zone perspective.
-            // If the user moved time zones, this date string will align with their new location.
-            const lastLogStr = lastLogTime ? toLocalISOString(lastLogTime) : null;
 
             const updates: any = {};
             
@@ -494,36 +548,24 @@ export const updateAppStreak = async (userId: string): Promise<{ streak: number,
                 updates.timeZone = systemTimeZone;
             }
 
-            let newStreak = currentStreak;
             let showedAnimation = false;
 
-            if (lastLogStr === todayStr) {
-                // Already logged today (in current TZ)
-                // Just update TZ if needed, but streak logic is done
-                if (isTimeZoneDifferent) {
-                    transaction.update(userRef, updates);
+            // If this update comes from toggling a habit, and the streak increased, show animation
+            if (isFromToggle && streak > currentStreak && streak > 0) {
+                // Only show animation if the toggled date is today or yesterday
+                const yesterdayStr = toLocalISOString(new Date(today.getTime() - 86400000));
+                if (toggledDateStr === todayStr || toggledDateStr === yesterdayStr) {
+                    showedAnimation = true;
                 }
-                return { streak: currentStreak, showedAnimation: false };
             }
 
-            if (lastLogStr === yesterdayStr) {
-                // Consecutive day
-                newStreak = currentStreak + 1;
-                showedAnimation = true;
-            } else {
-                // Gap > 1 day or first time (excluding initial onboarding which sets it to 1)
-                // If it was "tomorrow" (active future), reset to 1 (as per logic "date before yesterday -> 1")
-                // Reset to 1
-                newStreak = 1;
-                showedAnimation = true;
+            if (streak !== currentStreak || isTimeZoneDifferent) {
+                updates.dayStreak = streak;
+                updates.lastLogTime = serverTimestamp();
+                transaction.update(userRef, updates);
             }
 
-            updates.dayStreak = newStreak;
-            updates.lastLogTime = serverTimestamp();
-
-            transaction.update(userRef, updates);
-
-            return { streak: newStreak, showedAnimation };
+            return { streak, showedAnimation };
         });
         return result;
     } catch (e) {

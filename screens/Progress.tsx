@@ -524,7 +524,7 @@ export const Progress: React.FC = () => {
              
              // Get days in this specific week (handle partial weeks at year start)
              const { start, end } = getWeekRange(parseInt(year), parseInt(weekId.replace('week','')));
-             const daysInThisWeek = Math.floor((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
+             const daysInThisWeek = Math.round((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
              
              // Daily possible is the implied total divided by number of days in that week
              dailyPossible = Math.round(impliedTotalPossibleForWeek / daysInThisWeek);

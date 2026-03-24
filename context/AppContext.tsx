@@ -263,9 +263,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleHabit = async (habitId: string, date: string) => {
       if (!user) return;
-      // Pass the count of currently active habits to update the week's lastPercent
-      const activeCount = habits.filter(h => h.status === 'active').length;
-      await toggleHabitCompletion(user.uid, habitId, date, activeCount);
+      try {
+          // Pass the count of currently active habits to update the week's lastPercent
+          const activeCount = habits.filter(h => h.status === 'active').length;
+          const res = await toggleHabitCompletion(user.uid, habitId, date, activeCount);
+          if (res && res.showedAnimation) {
+              setStreakNotification({ visible: true, days: res.streak });
+          }
+      } catch (error: any) {
+          console.error("Failed to toggle habit:", error);
+          alert("Failed to update habit. Please try again.");
+      }
   };
 
   const checkHasHabits = async () => {
@@ -404,13 +412,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (sortedDates.length > 0) {
           const lastDate = new Date(sortedDates[0]);
           const today = new Date(todayStr);
-          const diff = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+          const diff = Math.round((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
           if(diff <= 1) {
               currentStreak = 1;
               let prev = lastDate;
               for(let i=1; i<sortedDates.length; i++) {
                   const curr = new Date(sortedDates[i]);
-                  const gap = Math.floor((prev.getTime() - curr.getTime()) / (1000 * 3600 * 24));
+                  const gap = Math.round((prev.getTime() - curr.getTime()) / (1000 * 3600 * 24));
                   if(gap === 1) {
                       currentStreak++;
                       prev = curr;
